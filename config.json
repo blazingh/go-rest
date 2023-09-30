@@ -1,0 +1,15 @@
+{
+  "roles": [
+    {
+      "name": "admin",
+      "tables": [
+        {
+          "name": "users",
+          "columns": [
+            "id", "name"
+          ]
+        }
+      ]
+    }
+  ] 
+}
