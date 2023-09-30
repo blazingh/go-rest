@@ -1,13 +1,11 @@
 package main
 
 import (
-	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"going/blazingh/test/initializers"
 	"going/blazingh/test/middleware"
 	"regexp"
-	"strings"
 )
 
 type Result struct {
@@ -41,19 +39,6 @@ func isValidTableName(name string) bool {
 	}
 
 	return true
-}
-
-func GetColumns(config initializers.Configuration, roleName, tableName string) (string, error) {
-	for _, role := range config.Roles {
-		if role.Name == roleName {
-			for _, table := range role.Tables {
-				if table.Name == tableName {
-					return strings.Join(table.Columns, ","), nil
-				}
-			}
-		}
-	}
-	return "*", errors.New("Table " + tableName + " not found")
 }
 
 func main() {
