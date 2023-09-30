@@ -1,11 +1,13 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
+	"fmt"
 	"going/blazingh/test/initializers"
 	"going/blazingh/test/middleware"
 	"regexp"
+
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type Result struct {
@@ -44,12 +46,6 @@ func isValidTableName(name string) bool {
 func main() {
 
 	r := gin.Default()
-
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
 
 	r.GET("/:table", middleware.ValidateToken, func(c *gin.Context) {
 
@@ -94,6 +90,9 @@ func main() {
 		// available columns for accessed role
 		availableColumns := make([]string, 0)
 
+		// get the policy
+		rls := initializers.Enforcer.GetFilteredNamedPolicy("p2", 0, role, table)
+
 		// check if the role has access to all the columns
 		allAccess, err := initializers.Enforcer.Enforce(role, table, "*", "read")
 		if allAccess && err == nil {
@@ -116,12 +115,25 @@ func main() {
 			return
 		}
 
-		// get the rows data
-		rows, err := initializers.DB.Table(table).Select(availableColumns).Limit(10).Rows()
+		// initialize the query
+		queryDB := initializers.DB.Table(table).Select(availableColumns).Limit(10)
+
+		// check for rls
+		if len(rls) > 0 {
+			tokenAtr, tokenAtrExists := claimsMap[rls[0][2]].(string)
+			if !tokenAtrExists {
+				c.AbortWithStatusJSON(500, "token atr was not present")
+				return
+			}
+			queryDB = queryDB.Where(fmt.Sprintf("%s = ?", rls[0][3]), tokenAtr)
+		}
+
+		rows, err := queryDB.Rows()
 		if err != nil {
 			c.JSON(404, gin.H{"error": "Table " + table + " not found"})
 			return
 		}
+
 		defer rows.Close()
 
 		// Create a slice to store the values of each row

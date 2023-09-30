@@ -4,3 +4,11 @@ p, admin, users, name, read
 p, admin, patients, first_name, read
 p, admin, patients, last_name, read
 p, admin, patients, phone_number, read
+
+p, admin, appointments, appointment_id, read
+p, admin, appointments, appointment_date, read
+p, admin, appointments, dentist_name, read
+p, admin, appointments, notes, read
+
+p2, admin, patients, sub, patient_id
+p2, admin, appointments, sub, patient_id
