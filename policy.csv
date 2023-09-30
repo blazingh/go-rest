@@ -1,9 +1,7 @@
 p, admin, users, id, read
 p, admin, users, name, read
 
-p, admin, patients, first_name, read
-p, admin, patients, last_name, read
-p, admin, patients, phone_number, read
+p, admin, patients, *, read
 
 p, admin, appointments, appointment_id, read
 p, admin, appointments, appointment_date, read

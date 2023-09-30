@@ -5,7 +5,6 @@ import (
 	"going/blazingh/test/initializers"
 	"going/blazingh/test/middleware"
 	"regexp"
-
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -65,33 +64,33 @@ func main() {
 		// Type-assert the claims to jwt.MapClaims
 		claimsMap, ok := claims.(jwt.MapClaims)
 		if !ok {
+			c.AbortWithStatusJSON(500, "claim was not of type jwt.MapClaims")
 			return
 		}
 
 		// Access role item in the claims
 		role, roleExists := claimsMap["role"].(string)
 		if !roleExists {
+			c.AbortWithStatusJSON(500, "role was not present in the token")
 			return
 		}
 
 		// get smaple data
 		tableSample, err := initializers.DB.Table(table).Limit(1).Rows()
 		if err != nil {
-			c.JSON(500, gin.H{"error": "Error fetching columns"})
+			c.AbortWithStatusJSON(500, err.Error())
 			return
 		}
 
 		// get the columns of the table
 		tableColumns, err := tableSample.Columns()
 		if err != nil {
-			c.JSON(500, gin.H{"error": "Error fetching columns"})
+			c.AbortWithStatusJSON(500, err.Error())
+			return
 		}
 
 		// available columns for accessed role
 		availableColumns := make([]string, 0)
-
-		// get the policy
-		rls := initializers.Enforcer.GetFilteredNamedPolicy("p2", 0, role, table)
 
 		// check if the role has access to all the columns
 		allAccess, err := initializers.Enforcer.Enforce(role, table, "*", "read")
@@ -118,19 +117,23 @@ func main() {
 		// initialize the query
 		queryDB := initializers.DB.Table(table).Select(availableColumns).Limit(10)
 
-		// check for rls
+		// get the row level policy
+		rls := initializers.Enforcer.GetFilteredNamedPolicy("p2", 0, role, table)
+
+		// check for row level security
 		if len(rls) > 0 {
 			tokenAtr, tokenAtrExists := claimsMap[rls[0][2]].(string)
 			if !tokenAtrExists {
 				c.AbortWithStatusJSON(500, "token atr was not present")
 				return
 			}
+			// match the token atribute to the specified column from the policy
 			queryDB = queryDB.Where(fmt.Sprintf("%s = ?", rls[0][3]), tokenAtr)
 		}
 
 		rows, err := queryDB.Rows()
 		if err != nil {
-			c.JSON(404, gin.H{"error": "Table " + table + " not found"})
+			c.AbortWithStatusJSON(404, "table " + table + " not found")
 			return
 		}
 
@@ -149,9 +152,7 @@ func main() {
 
 			// Scan the row into the slice of pointers
 			if err := rows.Scan(values...); err != nil {
-				c.JSON(500, gin.H{
-					"error": err.Error(),
-				})
+				c.AbortWithStatusJSON(500, "problem maping columns to struct")
 				return
 			}
 
@@ -166,9 +167,6 @@ func main() {
 		}
 
 		if err := rows.Err(); err != nil {
-			c.JSON(500, gin.H{
-				"error": err.Error(),
-			})
 			return
 		}
 
