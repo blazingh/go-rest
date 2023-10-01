@@ -3,6 +3,8 @@ p, admin, users, name, read
 
 p, admin, patients, *, read
 
+p, admin, bills, *, read
+
 p, admin, appointments, appointment_id, read
 p, admin, appointments, appointment_date, read
 p, admin, appointments, dentist_name, read

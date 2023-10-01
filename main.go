@@ -5,6 +5,8 @@ import (
 	"going/blazingh/test/initializers"
 	"going/blazingh/test/middleware"
 	"regexp"
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -108,7 +110,7 @@ func main() {
 			}
 		}
 
-		// ahort if ther is no columns to return
+		// abort if there is no columns to return
 		if len(availableColumns) < 1 {
 			c.AbortWithStatusJSON(401, "no columns found")
 			return
@@ -131,9 +133,63 @@ func main() {
 			queryDB = queryDB.Where(fmt.Sprintf("%s = ?", rls[0][3]), tokenAtr)
 		}
 
+		var count int64
+
+		err = queryDB.Count(&count).Error
+		if err != nil {
+			c.AbortWithStatusJSON(500, err.Error())
+			return
+		}
+
+		// get the page and page size
+		page, _ := c.GetQuery("page")
+		pageInt, err := strconv.Atoi(page)
+		if err != nil {
+			pageInt = 1
+		} else {
+			if pageInt < 1 {
+				pageInt = 1
+			}
+		}
+
+		pageSize, _ := c.GetQuery("pageSize")
+		pageSizeInt, err := strconv.Atoi(pageSize)
+		if err != nil {
+			pageSizeInt = 10
+		} else {
+			switch {
+			case pageSizeInt < 1:
+				pageSizeInt = 1
+			case pageSizeInt > 100:
+				pageSizeInt = 100
+			}
+		}
+
+		// calculate offset
+		offset := (pageInt - 1) * pageSizeInt
+
+		// Calculate total pages
+		totalPages := count / int64(pageSizeInt)
+		if count%int64(pageSizeInt) > 0 {
+			totalPages++
+		}
+
+		// Set prevPage and nextPage to 0 if there is no previous or next page
+		prevPage := pageInt - 1
+		if prevPage <= 0 {
+			prevPage = 1
+		}
+
+		nextPage := pageInt + 1
+		if nextPage > int(totalPages) {
+			nextPage = int(totalPages)
+		}
+
+		queryDB = queryDB.Offset(offset).Limit(pageSizeInt)
+
 		rows, err := queryDB.Rows()
 		if err != nil {
-			c.AbortWithStatusJSON(404, "table " + table + " not found")
+			c.AbortWithStatusJSON(404, "table "+table+" not found")
 			return
 		}
 
@@ -171,7 +227,13 @@ func main() {
 		}
 
 		// return the result
-		c.JSON(200, result)
+		c.JSON(200, gin.H{
+			"table": table,
+			"data": result,
+			"PrevPage": prevPage,
+			"NextPage": nextPage,
+			"totalPages": totalPages,
+		})
 	})
 
 	r.Run()
