@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"going/blazingh/test/initializers"
 	"going/blazingh/test/middleware"
 	"regexp"
 	"strconv"
-
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 type Result struct {
@@ -19,7 +18,6 @@ type Result struct {
 func init() {
 	initializers.LoadEnvVariables()
 	initializers.ConnectDB()
-	initializers.LoadConfigFromFile("config.json")
 	initializers.LoadCasbinConfig("model.conf", "policy.csv")
 }
 
@@ -228,11 +226,12 @@ func main() {
 
 		// return the result
 		c.JSON(200, gin.H{
-			"table": table,
-			"data": result,
-			"PrevPage": prevPage,
-			"NextPage": nextPage,
+			"table":      table,
+			"totalRows":  count,
 			"totalPages": totalPages,
+			"PrevPage":   prevPage,
+			"NextPage":   nextPage,
+			"data":       result,
 		})
 	})
 
