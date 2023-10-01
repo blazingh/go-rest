@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -8,7 +9,6 @@ import (
 	"going/blazingh/test/utils"
 	"slices"
 )
-
 
 func GetTable(c *gin.Context) {
 	table := c.Param("table")
@@ -38,7 +38,7 @@ func GetTable(c *gin.Context) {
 		return
 	}
 
-	// get smaple data
+	// get sample data
 	tableSample, err := initializers.DB.Table(table).Limit(1).Rows()
 	if err != nil {
 		c.AbortWithStatusJSON(500, err.Error())
@@ -105,7 +105,7 @@ func GetTable(c *gin.Context) {
 	allParams := c.Request.URL.Query()
 
 	// remove reserved params from the query
-	reservedParams := []string{"page", "page_size"}
+	reservedParams := []string{"page", "pageSize"}
 	for _, param := range reservedParams {
 		delete(allParams, param)
 	}
@@ -164,11 +164,22 @@ func GetTable(c *gin.Context) {
 	}
 	defer rows.Close()
 
+	// calculate the result size
+	resultSize := 0
+	if int(count) - offset < pageSizeInt {
+		resultSize = int(count) - offset
+	} else {
+		resultSize = pageSizeInt
+	}
+	if resultSize < 0 {
+		resultSize = 0
+	}
+
 	// Create a slice to store the values of each row
-	var result []map[string]interface{}
+	var result = make([]map[string]interface{}, resultSize)
 
 	// Fetch each row and store its values in a map
-	for rows.Next() {
+	for rowIndex := 0; rows.Next(); rowIndex++ {
 		// Prepare a slice of pointers to values
 		values := make([]interface{}, len(availableColumns))
 		for i := range availableColumns {
@@ -182,13 +193,20 @@ func GetTable(c *gin.Context) {
 		}
 
 		// Create a map to store the values of the current row
-		rowData := make(map[string]interface{})
+		rowData := make(map[string]interface{}, len(availableColumns))
 		for i, columnName := range availableColumns {
-			rowData[columnName] = *(values[i].(*interface{}))
+			value := *values[i].(*interface{})
+			// convert the value to the correct type
+			switch value := value.(type) {
+			case []uint8:
+				rowData[columnName] = json.RawMessage(value)
+			default:
+				rowData[columnName] = value
+			}
 		}
 
 		// Append the map to the result slice
-		result = append(result, rowData)
+		result[rowIndex] = rowData
 	}
 
 	if err := rows.Err(); err != nil {

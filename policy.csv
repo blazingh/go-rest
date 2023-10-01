@@ -5,6 +5,8 @@ p, admin, patients, *, read
 
 p, admin, bills, *, read
 
+p, admin, test_table, *, read
+
 p, admin, appointments, appointment_id, read
 p, admin, appointments, appointment_date, read
 p, admin, appointments, dentist_name, read
