@@ -5,6 +5,16 @@ import (
 	"strconv"
 )
 
+var Operators = map[string]string{
+	"eq": " = ?",             // equal
+	"ne": " <> ?",            // not equal
+	"lt": " < ?",             // less than
+	"le": " <= ?",            // less than or equal
+	"gt": " > ?",             // greater than
+	"ge": " >= ?",            // greater than or equal
+	"bw": " BETWEEN ? AND ?", // between
+}
+
 func IsValidTableName(name string) bool {
 	// Check if the length is within the allowed limit (adjust as needed)
 	if len(name) > 63 {
@@ -53,4 +63,21 @@ func GetPageSizeAsInt(pageSize string) int {
 	}
 
 	return pageSizeInt
+}
+
+func SplitKeyAndOperator(input string) (string, string) {
+	regex := regexp.MustCompile(`^([^[]+)(?:\[([^]]+)\])?$`)
+
+	matches := regex.FindStringSubmatch(input)
+
+	if len(matches) == 3 {
+		key := matches[1]
+		value := matches[2]
+		if value == "" {
+			value = Operators["eq"]
+		}
+		return key, value
+	}
+
+	return input, Operators["eq"]
 }

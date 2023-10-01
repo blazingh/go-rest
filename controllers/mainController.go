@@ -2,43 +2,13 @@ package controllers
 
 import (
 	"fmt"
-	"slices"
-	"going/blazingh/test/initializers"
-	"going/blazingh/test/utils"
-	"regexp"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"going/blazingh/test/initializers"
+	"going/blazingh/test/utils"
+	"slices"
 )
 
-var operators = map[string]string{
-	"eq": " = ?",            // equal
-	"ne": "<> ?",            // not equal
-	"lt": "< ?",             // less than
-	"le": "<= ?",            // less than or equal
-	"gt": "> ?",             // greater than
-	"ge": ">= ?",            // greater than or equal
-	"bw": "BETWEEN ? AND ?", // between
-}
-
-func extractKeyValue(input string) (string, string) {
-	regex := regexp.MustCompile(`^([^[]+)(?:\[([^]]+)\])?$`)
-
-	// Find submatches in the input string
-	matches := regex.FindStringSubmatch(input)
-
-	// If there is a match, return the key and the value (or "eq" if there is no value)
-	if len(matches) == 3 {
-		key := matches[1]
-		value := matches[2]
-		if value == "" {
-			value = "eq"
-		}
-		return key, value
-	}
-
-	// If there is no match, return an empty string for both key and value
-	return input, "eq"
-}
 
 func GetTable(c *gin.Context) {
 	table := c.Param("table")
@@ -140,19 +110,21 @@ func GetTable(c *gin.Context) {
 		delete(allParams, param)
 	}
 
+	// get and apply the filters from the query
 	for key, value := range allParams {
-		filterKey, filterOperator := extractKeyValue(key)
-		//check if the filter key is in the available columns
+		filterKey, filterOperator := utils.SplitKeyAndOperator(key)
+		// check if the filter key is in the available columns
 		if !slices.Contains(availableColumns, filterKey) {
 			c.AbortWithStatusJSON(400, "invalid filter parameter")
 			return
 		}
-		operator, ok := operators[filterOperator]
+		// check if the filter operator is valid
+		operator, ok := utils.Operators[filterOperator]
 		if !ok {
 			c.AbortWithStatusJSON(400, "invalid operator")
 			return
 		}
-		queryDB = queryDB.Where(fmt.Sprintf("%s %s", filterKey, operator), value[0])
+		queryDB = queryDB.Where(filterKey+string(operator), value[0])
 	}
 
 	// get the page and page size
