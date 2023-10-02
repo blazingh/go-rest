@@ -65,19 +65,20 @@ func GetPageSizeAsInt(pageSize string) int {
 	return pageSizeInt
 }
 
-func SplitKeyAndOperator(input string) (string, string) {
+func SplitKeyAndOperator(input string) (key string, operator string) {
 	regex := regexp.MustCompile(`^([^[]+)(?:\[([^]]+)\])?$`)
 
 	matches := regex.FindStringSubmatch(input)
 
 	if len(matches) == 3 {
-		key := matches[1]
-		value := matches[2]
-		if value == "" {
-			value = Operators["eq"]
+		key = matches[1]
+		operator = matches[2]
+		if operator == "" {
+			operator = "eq"
 		}
-		return key, value
+	} else {
+		key = input
+		operator = "eq"
 	}
-
-	return input, Operators["eq"]
+	return
 }

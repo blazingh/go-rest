@@ -119,12 +119,13 @@ func GetTable(c *gin.Context) {
 			return
 		}
 		// check if the filter operator is valid
-		operator, ok := utils.Operators[filterOperator]
-		if !ok {
-			c.AbortWithStatusJSON(400, "invalid operator")
-			return
+		if operator, ok := utils.Operators[filterOperator]; ok {
+			queryDB.Where(filterKey+string(operator), value[0])
+			continue
 		}
-		queryDB = queryDB.Where(filterKey+string(operator), value[0])
+
+		c.AbortWithStatusJSON(400, "invalid operator")
+		return
 	}
 
 	// get the page and page size
@@ -154,7 +155,7 @@ func GetTable(c *gin.Context) {
 	}
 
 	// apply pagintaion
-	queryDB = queryDB.Offset(offset).Limit(pageSizeInt)
+	queryDB.Offset(offset).Limit(pageSizeInt)
 
 	// excute the query
 	rows, err := queryDB.Rows()
@@ -166,7 +167,7 @@ func GetTable(c *gin.Context) {
 
 	// calculate the result size
 	resultSize := 0
-	if int(count) - offset < pageSizeInt {
+	if int(count)-offset < pageSizeInt {
 		resultSize = int(count) - offset
 	} else {
 		resultSize = pageSizeInt
@@ -196,10 +197,11 @@ func GetTable(c *gin.Context) {
 		rowData := make(map[string]interface{}, len(availableColumns))
 		for i, columnName := range availableColumns {
 			value := *values[i].(*interface{})
-			// convert the value to the correct type
-			switch value := value.(type) {
+
+			// store the value in the correct type
+			switch value.(type) {
 			case []uint8:
-				rowData[columnName] = json.RawMessage(value)
+				rowData[columnName] = json.RawMessage(string(value.([]uint8)))
 			default:
 				rowData[columnName] = value
 			}
